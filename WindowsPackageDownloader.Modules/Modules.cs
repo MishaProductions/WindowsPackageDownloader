@@ -1,5 +1,6 @@
 using WindowsPackageDownloader.Modules.Utils;
 using WindowsPackageDownloader.Modules.Exception;
+using Version = WindowsPackageDownloader.Modules.Utils.Version;
 
 namespace WindowsPackageDownloader.Modules
 {
