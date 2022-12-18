@@ -1,4 +1,4 @@
-﻿namespace WindowsPackageDownloader.Modules
+namespace WindowsPackageDownloader.Modules
 {
     public class Modules
     {
