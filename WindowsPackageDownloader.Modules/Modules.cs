@@ -1,17 +1,17 @@
 using WindowsPackageDownloader.Modules.Utils;
+using WindowsPackageDownloader.Modules.Exception;
 
 namespace WindowsPackageDownloader.Modules
 {
     public class Modules
     {
-        public static bool GetIfVersionAvailable(Version reqVer) {
-            bool success = false;
+        public static string GetIfVersionAvailable(Version reqVer) {
 
             if (reqVer.RequestVersion == null) {
-                success = false;
+                throw new VersionNotFoundException("Version is not found");
             }
 
-            return success;
+            return "";
         }
     }
 }
