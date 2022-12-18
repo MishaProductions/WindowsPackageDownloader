@@ -1,1 +1,16 @@
-﻿
+﻿namespace WindowsPackageDownloader.Modules
+{
+    public class Modules
+    {
+        public static void GetIfVersionAvailable(string Version) // change String to RequestVersion in own class soon.
+        {
+            // get from database
+
+            // if not available, return error
+
+            // if error, return error
+
+            // if success, return success
+        }
+    }
+}
