@@ -2,7 +2,7 @@
 {
     public class Modules
     {
-        public static void GetIfVersionAvailable(string Version)
+        public static void GetIfVersionAvailable(string Version) // change String to RequestVersion in own class soon.
         {
             // get from database
 
