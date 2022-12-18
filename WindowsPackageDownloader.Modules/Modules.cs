@@ -6,13 +6,13 @@ namespace WindowsPackageDownloader.Modules
 {
     public class Modules
     {
-        public static string GetIfVersionAvailable(Version reqVer) {
+        public string VersionToDownload(Version reqVer) {
 
-            if (reqVer.RequestVersion == null) {
+            if (reqVer == null) {
                 throw new VersionNotFoundException("Version is not found");
             }
 
-            return "";
+            return Version.StringToVersion(reqVer.RequestVersion);
         }
     }
 }
