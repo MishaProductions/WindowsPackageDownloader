@@ -1,16 +1,17 @@
+using WindowsPackageDownloader.Modules.Utils;
+
 namespace WindowsPackageDownloader.Modules
 {
     public class Modules
     {
-        public static void GetIfVersionAvailable(string Version) // change String to RequestVersion in own class soon.
-        {
-            // get from database
+        public static bool GetIfVersionAvailable(Version reqVer) {
+            bool success = false;
 
-            // if not available, return error
+            if (reqVer.RequestVersion == null) {
+                success = false;
+            }
 
-            // if error, return error
-
-            // if success, return success
+            return success;
         }
     }
 }
