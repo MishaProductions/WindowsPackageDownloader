@@ -1,5 +1,10 @@
+@import url('https://fonts.googleapis.com/css2?family=Quicksand'); 
 html {
-  font-size: 14px;
+    font-size: 14px;
+}
+
+* {
+    font-family: 'Quicksand', sans-serif;
 }
 
 @media (min-width: 768px) {
@@ -18,5 +23,10 @@ html {
 }
 
 body {
-  margin-bottom: 60px;
+    margin-bottom: 60px;
+}
+
+.bg-black {
+    background-color: black;
+    color: white;
 }
