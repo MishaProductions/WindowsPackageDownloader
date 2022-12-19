@@ -1,3 +1,7 @@
 .vs/
 WindowsPackageDownloader/obj/
 WindowsPackageDownloader/bin/
+TestApp/bin/
+TestApp/obj/
+WindowsPackageDownloader.Modules/bin/
+WindowsPackageDownloader.Modules/obj/

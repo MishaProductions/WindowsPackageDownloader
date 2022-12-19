@@ -3,9 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.4.33122.133
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WindowsPackageDownloader", "WindowsPackageDownloader\WindowsPackageDownloader.csproj", "{676F5E64-4764-44CD-A099-EB500287BF15}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WindowsPackageDownloader.Website", "WindowsPackageDownloader\WindowsPackageDownloader.Website.csproj", "{676F5E64-4764-44CD-A099-EB500287BF15}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WindowsPackageDownloader.Modules", "WindowsPackageDownloader.Modules\WindowsPackageDownloader.Modules.csproj", "{4394B46D-245A-4450-8D48-9B280E754E1F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WindowsPackageDownloader.Core", "WindowsPackageDownloader.Modules\WindowsPackageDownloader.Core.csproj", "{4394B46D-245A-4450-8D48-9B280E754E1F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestApp", "TestApp\TestApp.csproj", "{465F1855-3C33-4293-9024-B2FE9117D5CF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,10 @@ Global
 		{4394B46D-245A-4450-8D48-9B280E754E1F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4394B46D-245A-4450-8D48-9B280E754E1F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4394B46D-245A-4450-8D48-9B280E754E1F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{465F1855-3C33-4293-9024-B2FE9117D5CF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{465F1855-3C33-4293-9024-B2FE9117D5CF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{465F1855-3C33-4293-9024-B2FE9117D5CF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{465F1855-3C33-4293-9024-B2FE9117D5CF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
