@@ -28,25 +28,25 @@ namespace WindowsPackageDownloader.Core
 
         public async Task FetchUpdate(string arch, string ring, string flight, int build, int minor, int sku, string type = "Production")
         {
-            arch=arch.ToLower();
+            arch = arch.ToLower();
             ring = ring.ToUpper();
             flight = char.ToUpper(flight[0]) + flight.Substring(1).ToLower();
             flight = "Active";
-            
 
-            if(!(arch == "amd64" || arch == "x86" || arch == "arm64" || arch=="arm" || arch == "all"))
+
+            if (!(arch == "amd64" || arch == "x86" || arch == "arm64" || arch == "arm" || arch == "all"))
             {
                 throw new Exception("Invaild arch");
             }
-            if(!(ring == "DEV" || ring == "BETA" || ring == "RELEASEPREVIEW" || ring=="WIF" ||ring=="WIS"||ring=="RP"||ring == "RETAIL" || ring == "MSIT"))
+            if (!(ring == "DEV" || ring == "BETA" || ring == "RELEASEPREVIEW" || ring == "WIF" || ring == "WIS" || ring == "RP" || ring == "RETAIL" || ring == "MSIT"))
             {
                 throw new Exception("Invaild ring: " + ring);
             }
-            if(!(flight == "Mainline" || flight =="Active" || flight == "Skip"))
+            if (!(flight == "Mainline" || flight == "Active" || flight == "Skip"))
             {
                 throw new Exception("Invaild flight: " + flight);
             }
-            if(flight=="Skip" && ring != "WIF")
+            if (flight == "Skip" && ring != "WIF")
             {
                 throw new Exception("Cannot have SKIP flight, and not WIF ring");
             }
@@ -58,7 +58,7 @@ namespace WindowsPackageDownloader.Core
 
             var buildstr = $"10.0.{build}.{minor}";
             type = char.ToUpper(type[0]) + type.Substring(1).ToLower();
-            if(!(type=="Production" || type == "Test"))
+            if (!(type == "Production" || type == "Test"))
             {
                 type = "Production";
             }
@@ -66,7 +66,17 @@ namespace WindowsPackageDownloader.Core
             await EncryptData(device);
             var data = await CreateFetchUpdateRequest(device, arch, ring, flight, buildstr, sku, type);
             var outData = await SendWuPostRequest(data, device);
-            ;
+
+            var x = outData.ToString().Contains("UpdateInfo");
+            if (!x)
+            {
+                Console.WriteLine($"No update found for: {arch} {ring} {flight} {buildstr} {type}");
+            }
+            else
+            {
+                Console.WriteLine($"UPDATE FOUND for: {arch} {ring} {flight} {buildstr} {type}");
+
+            }
         }
         private bool IsSkuServer(int sku)
         {
@@ -151,7 +161,7 @@ namespace WindowsPackageDownloader.Core
         "SheddingAware=1",
         "Id=MoUpdateOrchestrator" };
             var productsh = EscapeString(string.Join(";", products.ToArray()));
-            var callerAttribh = "E:" + EscapeString( string.Join("&", callerAttrib));
+            var callerAttribh = "E:" + EscapeString(string.Join("&", callerAttrib));
             var syncCurrentStr = "false";
             // $syncCurrent = uupApiConfigIsTrue('fetch_sync_current_only');
             //$syncCurrentStr = $syncCurrent ? 'true' : 'false';
@@ -547,10 +557,19 @@ namespace WindowsPackageDownloader.Core
             var end = "b401";
 
             var value = header + random + end;
-            var data = $"t={Convert.ToBase64String(Encoding.Unicode.GetBytes(value))}&p=";
+            var data = $"t={Convert.ToBase64String(StringToByteArray(value))}&p=";
             return Convert.ToBase64String(Encoding.Unicode.GetBytes(string.Join("", data.Split("\0"))));
 
         }
+        public static byte[] StringToByteArray(string hex)
+        {
+            int NumberChars = hex.Length;
+            byte[] bytes = new byte[NumberChars / 2];
+            for (int i = 0; i < NumberChars; i += 2)
+                bytes[i / 2] = Convert.ToByte(hex.Substring(i, 2), 16);
+            return bytes;
+        }
+
         private string CreateGetCookieRequest(string device)
         {
             var uuid = GenerateUUID();
@@ -633,7 +652,7 @@ namespace WindowsPackageDownloader.Core
             if (response.StatusCode == HttpStatusCode.InternalServerError && responseText.Contains("CookieExpired"))
             {
                 File.Delete("wutok.json");
-                var x= await EncryptData(device);
+                var x = await EncryptData(device);
                 return await SendWuPostRequest(req, device);
             }
             try
@@ -664,7 +683,7 @@ namespace WindowsPackageDownloader.Core
         }
         public static string RandomString(int length)
         {
-            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+            const string chars = "0123456789abcdef";
             return new string(Enumerable.Repeat(chars, length)
                 .Select(s => s[random.Next(s.Length)]).ToArray());
         }

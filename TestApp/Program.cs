@@ -8,7 +8,7 @@ namespace TestApp
         {
             Console.WriteLine("Hello, World!");
             var client = new WUClient();
-            await client.FetchUpdate("All", "Retail", "Active", 20348, 1, 8);
+            await client.FetchUpdate("All", "ReleasePreview", "Mainline", 20349, 1, 126);
             Console.Write("Press any key to exit . . .");
             Console.ReadKey();
         }
