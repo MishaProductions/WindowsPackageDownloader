@@ -629,6 +629,7 @@ namespace WindowsPackageDownloader.Core
 
             XmlDocument doc = new XmlDocument();
             doc.LoadXml(responseText);
+            Console.WriteLine(responseText);
             if (response.StatusCode == HttpStatusCode.InternalServerError && responseText.Contains("CookieExpired"))
             {
                 File.Delete("wutok.json");
