@@ -162,7 +162,7 @@ namespace WindowsPackageDownloader.Core
         "Id=MoUpdateOrchestrator" };
             var productsh = EscapeString(string.Join(";", products.ToArray()));
             var callerAttribh = "E:" + EscapeString(string.Join("&", callerAttrib));
-            var syncCurrentStr = "false";
+            var syncCurrentStr = "true";
             // $syncCurrent = uupApiConfigIsTrue('fetch_sync_current_only');
             //$syncCurrentStr = $syncCurrent ? 'true' : 'false';
             var deviceatrrib = CreateDeviceAttributes(flight, ring, build, archlist, sku, type);
@@ -670,10 +670,21 @@ namespace WindowsPackageDownloader.Core
                         File.WriteAllText("wutok.json", (string)j.ToString());
                     }
                 }
+                else
+                {
+                    //decrypt
+                    var x = body["SyncUpdatesResponse"]["SyncUpdatesResult"]["NewCookie"]["EncryptedData"].InnerText;
+                    EsrpDecryptor decr = new EsrpDecryptor(device);
+                    var decrs = new MemoryStream();
+                    var bx = Convert.FromBase64String(x);
+                    await decr.DecryptStreamFullAsync(new MemoryStream(bx), decrs, (ulong)bx.Length);
+                    var str2 = decrs.ToArray();
+                    ;
+                }
             }
-            catch
+            catch (Exception ex)
             {
-
+                Console.WriteLine(ex.Message);
             }
             return doc;
         }
