@@ -2,7 +2,15 @@
     ViewData["Title"] = "Home Page";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://docs.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<div class="text-white bg-black p-2" style="border-radius: 15px 15px 15px 15px;">
+    <form method="get" action="/Search">
+        <div class="row g-0 align-items-center p-2">
+            <div class="col-10">
+                <input type="text" name="q" style="border-radius: 15px 0px 0px 15px;" placeholder="Search for a build" class="form-control w-" />
+            </div>
+            <div class="col-2">
+                <input type="submit" style="border-radius: 0px 15px 15px 0px; background-color: #343434; color: white; border-color: #343434;" value="Search" class="form-control" />
+            </div>
+        </div>
+    </form>
 </div>

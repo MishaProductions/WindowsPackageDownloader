@@ -30,3 +30,8 @@ body {
     background-color: black;
     color: white;
 }
+
+.bg-nav {
+    background-color: #040404;
+    box-shadow: 10px;
+}
