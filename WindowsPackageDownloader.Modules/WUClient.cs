@@ -13,8 +13,19 @@ using System.Xml;
 
 namespace WindowsPackageDownloader.Core
 {
-    public class WUClient
+    /// <summary>
+    /// Windows Update Client
+    /// </summary>
+    public partial class WUClient
     {
-        // This class will be completely rewritten as it's a mess and it doesn't work
+     
+        private readonly HttpClient client;
+
+        public WUClient()
+        {
+            //setup the http client
+            client = new HttpClient();
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("Windows-Update-Agent/10.0.10011.16384 Client-Protocol/2.50");
+        }
     }
 }
