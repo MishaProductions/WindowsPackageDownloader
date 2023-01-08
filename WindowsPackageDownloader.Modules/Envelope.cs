@@ -377,9 +377,12 @@ public class DownloadInfo
 
     [IgnoreDataMember]
     public string Url { get; set; }
+    [DataMember]
+    public string UpdateID { get; set; }
 
     [DataMember(EmitDefaultValue = false)]
     public string EsrpDecryptionInformation { get; set; }
+
 }
 [DataContract]
 public class FileRequests

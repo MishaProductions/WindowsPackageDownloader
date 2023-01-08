@@ -1,9 +1,16 @@
+using WindowsPackageDownloader.Website;
+
 namespace WindowsPackageDownloader
 {
     public class Program
     {
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
+            Console.WriteLine("Initializing database");
+            Cache.Init();
+           
+            await UUP.FetchUpdate("16299.15", Core.WUArch.amd64, "RETAIL", "rs3_release", "Active", "48");
+
             var builder = WebApplication.CreateBuilder(args);
 
             // Add services to the container.

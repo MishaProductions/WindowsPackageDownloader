@@ -109,9 +109,57 @@ namespace WindowsPackageDownloader.Core
 
             return envelope;
         }
-        public async Task<FileRequests?> FetchBuild(string build, WUArch arch, string ring, string branch, string flight)
+      
+        public async Task<FileRequests?> FetchBuildAndDownloadlinks(string build, WUArch arch, string ring, string branch, string flight, string sku)
         {
-            var info = new DesktopProduct(arch, build, branch, flight, ring, "Client.OS.rs2");
+            var info = new DesktopProduct(arch, build, branch, flight, ring, "Client.OS.rs2", sku);
+
+            string token = await GetToken();
+            var time = DateTime.Now;
+            var expire = time.AddSeconds(120);
+
+            var callAtribs = info.GetCallerAttributes();
+            var deviceAttribs = info.GetDeviceAttributes();
+            var product = info.GetProductString();
+            var xml = FetchBuildInfo(Guid.NewGuid().ToString(), token,
+                XmlConvert.ToString(time, XmlDateTimeSerializationMode.Local),
+                XmlConvert.ToString(expire, XmlDateTimeSerializationMode.Local),
+               callAtribs,
+                deviceAttribs,
+                product);
+
+            var req = await SendRequest(xml);
+            var responseText = await req.Content.ReadAsStringAsync();
+            
+            //Parse the XML
+            XmlSerializer ser = new XmlSerializer(typeof(Envelope));
+            Envelope response = new();
+            using (XmlReader reader = XmlReader.Create(new StringReader(responseText)))
+            {
+                var x = (Envelope?)ser.Deserialize(reader);
+                if(x != null)
+                {
+                    response = x;
+                }
+            }
+
+            if (!(response.Body.SyncUpdatesResponse?.SyncUpdatesResult?.NewUpdates?.UpdateInfo != null)) return null;
+            //extract update identify
+            var updIden = UpdateInfo.ExtractUpdateIdentity(response);
+            if(updIden != null)
+            {
+                //Send the second request --> Get links to download packages.
+                var envelopeUUPFilesResponse = await GetFiles(info, updIden.UpdateID, updIden.RevisionNumber);
+
+                //Now merge and get DownloadInfo
+                var dwInfo = ExtractDownloadInfo(updIden, response.Body.SyncUpdatesResponse, envelopeUUPFilesResponse.Body.GetExtendedUpdateInfo2Response, false);
+                return new FileRequests { DownloadInfo = dwInfo, UpdateID = updIden.UpdateID, LastTimeChange = updIden.LastChangeTime, FlightID = updIden.FlightID, RevisionNum = updIden.RevisionNumber, Title = updIden.LocalizedProperties.Title, Description = updIden.LocalizedProperties.Description };
+            }
+            return null;
+        }
+        public async Task<FileRequests?> FetchBuild(string build, WUArch arch, string ring, string branch, string flight, string sku)
+        {
+            var info = new DesktopProduct(arch, build, branch, flight, ring, "Client.OS.rs2", sku);
 
             string token = await GetToken();
             var time = DateTime.Now;
@@ -136,7 +184,7 @@ namespace WindowsPackageDownloader.Core
             using (XmlReader reader = XmlReader.Create(new StringReader(responseText)))
             {
                 var x = (Envelope?)ser.Deserialize(reader);
-                if(x != null)
+                if (x != null)
                 {
                     response = x;
                 }
@@ -145,14 +193,9 @@ namespace WindowsPackageDownloader.Core
             if (!(response.Body.SyncUpdatesResponse?.SyncUpdatesResult?.NewUpdates?.UpdateInfo != null)) return null;
             //extract update identify
             var updIden = UpdateInfo.ExtractUpdateIdentity(response);
-            if(updIden != null)
+            if (updIden != null)
             {
-                //Send the second request --> Get links to download packages.
-                var envelopeUUPFilesResponse = await GetFiles(info, updIden.UpdateID, updIden.RevisionNumber);
-
-                //Now merge and get DownloadInfo
-                var dwInfo = ExtractDownloadInfo(updIden, response.Body.SyncUpdatesResponse, envelopeUUPFilesResponse.Body.GetExtendedUpdateInfo2Response, false);
-                return new FileRequests { DownloadInfo = dwInfo, UpdateID = updIden.UpdateID, LastTimeChange = updIden.LastChangeTime, FlightID = updIden.FlightID, RevisionNum = updIden.RevisionNumber, Title = updIden.LocalizedProperties.Title, Description = updIden.LocalizedProperties.Description };
+                return new FileRequests { UpdateID = updIden.UpdateID, LastTimeChange = updIden.LastChangeTime, FlightID = updIden.FlightID, RevisionNum = updIden.RevisionNumber, Title = updIden.LocalizedProperties.Title, Description = updIden.LocalizedProperties.Description };
             }
             return null;
         }
@@ -196,7 +239,8 @@ namespace WindowsPackageDownloader.Core
                         SHA1Hash = updateAgentFile.Digest,
                         Url = updateAgentLocation.Url,
                         EsrpDecryptionInformation = updateAgentLocation.EsrpDecryptionInformation,
-                        SHA256Hash = updateAgentFile.AdditionalDigest.Text
+                        SHA256Hash = updateAgentFile.AdditionalDigest.Text,
+                      
                     });
                     downloadInfos.Sort(delegate (DownloadInfo file1, DownloadInfo file2)
                     {

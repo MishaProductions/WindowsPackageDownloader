@@ -10,5 +10,6 @@ namespace WindowsPackageDownloader.Core
     {
         amd64,
         x86,
+        arm64
     }
 }

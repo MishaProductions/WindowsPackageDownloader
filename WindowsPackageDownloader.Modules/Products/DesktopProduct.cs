@@ -9,7 +9,7 @@ namespace WindowsPackageDownloader.Core.Products
 {
     public class DesktopProduct : Product
     {
-        public DesktopProduct(WUArch arch, string build, string branch, string flight, string ring, string productstr) : base(arch, build, branch, flight, ring, productstr, "48")
+        public DesktopProduct(WUArch arch, string build, string branch, string flight, string ring, string productstr, string sku) : base(arch, build, branch, flight, ring, productstr, sku)
         {
         }
 
