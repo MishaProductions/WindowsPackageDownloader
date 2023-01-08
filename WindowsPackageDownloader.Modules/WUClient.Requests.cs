@@ -1,59 +1,64 @@
 ﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Dynamic;
+using System.IO;
 using System.Linq;
+using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
+using System.Xml.Linq;
+using System.Xml.Serialization;
 using WindowsPackageDownloader.Core.Products;
+using static WindowsPackageDownloader.Core.UpdateInfo;
 
 namespace WindowsPackageDownloader.Core
 {
     public partial class WUClient
     {
-        private static readonly Random random = new Random();
+        private CorrelationVector correlationVector = new CorrelationVector();
         private const string WUEndpoint = "https://fe3cr.delivery.mp.microsoft.com/ClientWebService/client.asmx";
         private const string WUEndpointSecured = "https://fe3cr.delivery.mp.microsoft.com/ClientWebService/client.asmx/secured";
         private async Task<string> GetToken()
         {
-            if (!File.Exists("wutok.json"))
+            var req = CreateGetCookieRequest();
+            var x = await SendRequest(req);
+            if (!x.IsSuccessStatusCode)
             {
-                var req = CreateGetCookieRequest();
-                var x = await SendRequest(req);
-                if (!x.IsSuccessStatusCode)
-                {
-                    throw new Exception("Failed to get cookie");
-                }
-                var responseText = await x.Content.ReadAsStringAsync();
-                XmlDocument doc = new XmlDocument();
-                doc.LoadXml(responseText);
-                Console.WriteLine(responseText);
-                var body = doc["s:Envelope"]["s:Body"];
-                var cookieResponse = body["GetCookieResponse"];
-                string token = "";
-                if (cookieResponse != null)
-                {
-                    var r = cookieResponse["GetCookieResult"];
-                    if (r != null)
-                    {
-                        dynamic j = new JObject();
-                        j.expirationDate = r["Expiration"].InnerText;
-                        j.data = token = r["EncryptedData"].InnerText;
-                        File.WriteAllText("wutok.json", (string)j.ToString());
-                    }
-                }
-                if (token == "")
-                {
-                    throw new Exception("failed to get cookie");
-                }
-                return token;
+                throw new Exception("Failed to get cookie");
             }
-            else
+            var responseText = await x.Content.ReadAsStringAsync();
+
+            //Parse the XML
+            XmlSerializer ser = new XmlSerializer(typeof(Envelope));
+            Envelope response = new();
+            using (XmlReader reader = XmlReader.Create(new StringReader(responseText)))
             {
-                dynamic x = JsonConvert.DeserializeObject(File.ReadAllText("wutok.json"));
-                return x.data;
+                var responsenull = (Envelope?)ser.Deserialize(reader);
+                if (responsenull != null)
+                {
+                    response = responsenull;
+                }
             }
+
+            string token = "";
+            if (response != null)
+            {
+                if (response.Body.GetCookieResponse != null)
+                {
+                    token = response.Body.GetCookieResponse.GetCookieResult.EncryptedData;
+                }
+            }
+
+            if (token == "")
+            {
+                throw new Exception("failed to get cookie");
+            }
+            return token;
         }
         internal async Task<HttpResponseMessage> SendRequest(string request)
         {
@@ -81,7 +86,30 @@ namespace WindowsPackageDownloader.Core
             return $"<s:Envelope xmlns:a=\"http://www.w3.org/2005/08/addressing\" xmlns:s=\"http://www.w3.org/2003/05/soap-envelope\"><s:Header><a:Action s:mustUnderstand=\"1\">http://www.microsoft.com/SoftwareDistribution/Server/ClientWebService/GetCookie</a:Action><a:To s:mustUnderstand=\"1\">https://fe3.delivery.mp.microsoft.com/ClientWebService/client.asmx</a:To><o:Security s:mustUnderstand=\"1\" xmlns:o=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd\"><wuws:WindowsUpdateTicketsToken wsu:id=\"ClientMSA\" xmlns:wsu=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd\" xmlns:wuws=\"http://schemas.microsoft.com/msus/2014/10/WindowsUpdateAuthorization\"><TicketType Name=\"MSA\" Version=\"1.0\" Policy=\"MBI_SSL\"></TicketType></wuws:WindowsUpdateTicketsToken></o:Security></s:Header><s:Body><GetCookie xmlns=\"http://www.microsoft.com/SoftwareDistribution/Server/ClientWebService\"><protocolVersion>2.0</protocolVersion></GetCookie></s:Body></s:Envelope>"; ;
         }
 
-        public async Task GetUpdateInfo(string build, WUArch arch, string ring, string branch, string flight)
+        public async Task<Envelope> GetFiles(Product product, string updateId, string rev)
+        {
+            var composed = product.BuildFileGetRequest(updateId, rev, await GetToken());
+            var req = CreateRequestHeader(HttpMethod.Post, WUEndpointSecured);
+
+            req.Content = CreateStringContentSoapXml(composed);
+            req.Headers.Add("MS-CV", correlationVector.Increment());
+            var resp = await client.SendAsync(req);
+
+            //Parse the XML
+            XmlSerializer ser = new XmlSerializer(typeof(Envelope));
+            Envelope envelope = new();
+            using (XmlReader reader = XmlReader.Create(new StringReader(await resp.Content.ReadAsStringAsync())))
+            {
+                var x = (Envelope?)ser.Deserialize(reader);
+                if (x != null)
+                {
+                    envelope = x;
+                }
+            }
+
+            return envelope;
+        }
+        public async Task<FileRequests?> FetchBuild(string build, WUArch arch, string ring, string branch, string flight)
         {
             var info = new DesktopProduct(arch, build, branch, flight, ring, "Client.OS.rs2");
 
@@ -100,8 +128,139 @@ namespace WindowsPackageDownloader.Core
                 product);
 
             var req = await SendRequest(xml);
-            var content = await req.Content.ReadAsStringAsync();
-            ;
+            var responseText = await req.Content.ReadAsStringAsync();
+
+            //Parse the XML
+            XmlSerializer ser = new XmlSerializer(typeof(Envelope));
+            Envelope response = new();
+            using (XmlReader reader = XmlReader.Create(new StringReader(responseText)))
+            {
+                var x = (Envelope?)ser.Deserialize(reader);
+                if(x != null)
+                {
+                    response = x;
+                }
+            }
+
+            if (!(response.Body.SyncUpdatesResponse?.SyncUpdatesResult?.NewUpdates?.UpdateInfo != null)) return null;
+            //extract update identify
+            var updIden = UpdateInfo.ExtractUpdateIdentity(response);
+            if(updIden != null)
+            {
+                //Send the second request --> Get links to download packages.
+                var envelopeUUPFilesResponse = await GetFiles(info, updIden.UpdateID, updIden.RevisionNumber);
+
+                //Now merge and get DownloadInfo
+                var dwInfo = ExtractDownloadInfo(updIden, response.Body.SyncUpdatesResponse, envelopeUUPFilesResponse.Body.GetExtendedUpdateInfo2Response, false);
+                return new FileRequests { DownloadInfo = dwInfo, UpdateID = updIden.UpdateID, LastTimeChange = updIden.LastChangeTime, FlightID = updIden.FlightID, RevisionNum = updIden.RevisionNumber, Title = updIden.LocalizedProperties.Title, Description = updIden.LocalizedProperties.Description };
+            }
+            return null;
         }
+        private static Files DeserializeFragmentFiles(string content)
+        {
+            var serFiles = new XmlSerializer(typeof(OldManYellsAtParcel));
+            using var strReader = new StringReader("<OldManYellsAtParcel>" + content + "</OldManYellsAtParcel>");
+            using XmlReader reader = XmlReader.Create(strReader, new XmlReaderSettings { ConformanceLevel = ConformanceLevel.Fragment });
+            return ((OldManYellsAtParcel)serFiles.Deserialize(reader)).Files;
+        }
+      
+        public virtual DownloadInfo[] ExtractDownloadInfo(UpdateIdentity updateInfo, SyncUpdatesResponse requestEnv, GetExtendedUpdateInfo2Response filesEnv, bool updateAgentOnly = false)
+        {
+            try
+            {
+                List<DownloadInfo> downloadInfos = new List<DownloadInfo>();
+                Update extendedUpdate = null;
+                foreach (var extUpdate in requestEnv.SyncUpdatesResult.ExtendedUpdateInfo.Updates.Update)
+                {
+                    if (extUpdate.ID == updateInfo.ID && extUpdate.Xml.StartsWith("<ExtendedProperties"))
+                    {
+                        extendedUpdate = extUpdate;
+                        break;
+                    }
+                }
+
+                Files files = DeserializeFragmentFiles(extendedUpdate.Xml);
+
+                if (updateAgentOnly)
+                {
+                    //Seek for UpdateAgent
+                    var updateAgentFile = files.File.AsParallel().Single(f => f.PatchingType == "ServicingStack");
+                    var updateAgentLocation = filesEnv.GetExtendedUpdateInfo2Result.FileLocations.FileLocation.AsParallel().Single(f => f.FileDigest == updateAgentFile.Digest);
+
+                    downloadInfos.Add(new DownloadInfo
+                    {
+                        ContentType = updateAgentFile.PatchingType,
+                        Installable = true,
+                        Name = updateAgentFile.FileName,
+                        Size = long.Parse(updateAgentFile.Size),
+                        SHA1Hash = updateAgentFile.Digest,
+                        Url = updateAgentLocation.Url,
+                        EsrpDecryptionInformation = updateAgentLocation.EsrpDecryptionInformation,
+                        SHA256Hash = updateAgentFile.AdditionalDigest.Text
+                    });
+                    downloadInfos.Sort(delegate (DownloadInfo file1, DownloadInfo file2)
+                    {
+                        return file1.Size.CompareTo(file2.Size);
+                    });
+                    return downloadInfos.ToArray();
+                }
+                else
+                {
+                    if (filesEnv.GetExtendedUpdateInfo2Result.FileLocations == null)
+                        throw new Exception("Check deviceAttributes of both.");
+
+                    Stopwatch stopwatch = Stopwatch.StartNew();
+
+                    //Build hashtable Digest-FileLocation
+                    Hashtable htDigestFileLocation = new Hashtable(filesEnv.GetExtendedUpdateInfo2Result.FileLocations.FileLocation.Count + 1);
+
+                    //Build hashtable Digest-File
+                    Hashtable htDigestFile = new Hashtable(files.File.Count + 1);
+
+                    DownloadInfo[] dw = new DownloadInfo[files.File.Count];
+
+                    filesEnv.GetExtendedUpdateInfo2Result.FileLocations.FileLocation.ForEach(FL => htDigestFileLocation.Add(FL.FileDigest, FL));
+                    files.File.ForEach(FF => htDigestFile.Add(FF.Digest, FF));
+
+
+                    int i = 0;
+                    foreach (DictionaryEntry item in htDigestFileLocation)
+                    {
+                        var fileTmp = (FileF)htDigestFile[item.Key];
+                        var fileLocationTmp = (item.Value as FileLocation);
+
+                        var dwTmp = new DownloadInfo
+                        {
+                            ContentType = fileTmp.PatchingType,
+                            Installable = true,
+                            Name = fileTmp.FileName,
+                            Size = long.Parse(fileTmp.Size),
+                            SHA1Hash = (string)item.Key,
+                            Url = fileLocationTmp.Url,
+                            EsrpDecryptionInformation = fileLocationTmp.EsrpDecryptionInformation,
+                            SHA256Hash = fileTmp.AdditionalDigest.Text
+                        };
+
+                        dw[i++] = dwTmp;
+                    }
+
+                    stopwatch.Stop();
+
+                    Console.WriteLine($"Paired in: {stopwatch.Elapsed}ms");
+
+                    Array.Sort(dw, (file1, file2) => file1.Size.CompareTo(file2.Size));
+                    return dw;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("[ERROR] Internal server error.");
+                return null;
+            }
+        }
+        private static HttpRequestMessage CreateRequestHeader(HttpMethod method, string url)
+  => new HttpRequestMessage(method, new Uri(url));
+        private static StringContent CreateStringContentSoapXml(string composedString)
+    => new StringContent(composedString, System.Text.Encoding.UTF8, "application/soap+xml");
     }
 }
